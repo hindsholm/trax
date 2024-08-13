@@ -14,18 +14,24 @@ import io.jenetics.jpx.GPX;
 import io.jenetics.jpx.Track;
 import io.jenetics.jpx.TrackSegment;
 import io.jenetics.jpx.WayPoint;
-import io.quarkus.runtime.QuarkusApplication;
-import io.quarkus.runtime.annotations.QuarkusMain;
+import jakarta.enterprise.context.Dependent;
 
-@QuarkusMain
-public class Main implements QuarkusApplication {
+@Dependent
+public class TrackExtractor {
 
-    @Override
-    public int run(String... args) throws Exception {
-        Path gpxFile = Path.of(args[0]);
-        GPX.read(gpxFile).tracks()
-            .forEach(this::writeTrack);
-        return 0;
+    Path outDir;
+
+    void setOutDir(Path outDir) {
+        this.outDir = outDir;
+    }
+
+    void extractTracks(Path gpxFile) {
+        try {
+            GPX.read(gpxFile).tracks()
+                .forEach(this::writeTrack);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void writeTrack(Track track) {
@@ -36,15 +42,15 @@ public class Main implements QuarkusApplication {
             System.out.printf("Could not extract filename from track '%s': %s\n", track, e);
             return;
         }
-        Path file = Path.of("tmp/" + fileName);
-        System.out.printf("Writing '%s' to file '%s'\n", track, file.toAbsolutePath());
+        Path outFile = outDir.resolve(fileName);
+        System.out.printf("Writing '%s' to file '%s'\n", track, outFile.toAbsolutePath());
         GPX gpx = GPX.builder()
             .addTrack(sortTrack(track))
             .build();
         try {
-            GPX.write(gpx, file);
+            GPX.write(gpx, outFile);
         } catch (IOException e) {
-            System.out.printf("Could not write file '%s': %s\n", file.toAbsolutePath(), e);
+            System.out.printf("Could not write file '%s': %s\n", outFile.toAbsolutePath(), e);
         }
     }
 
